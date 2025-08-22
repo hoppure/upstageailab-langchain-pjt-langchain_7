@@ -1,0 +1,9 @@
+
+langchain-core
+langchain-community
+langchain-openai
+langchain-text-splitters
+pymupdf
+langchain-teddynote
+langchain_upstage
+faiss-cpu
