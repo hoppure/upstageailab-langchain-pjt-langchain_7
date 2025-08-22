@@ -13,17 +13,17 @@
 
 ## 👨‍👩‍👦‍👦 팀 구성원
 
-| ![박패캠](https://avatars.githubusercontent.com/u/156163982?v=4) | ![이패캠](https://avatars.githubusercontent.com/u/156163982?v=4) | ![최패캠](https://avatars.githubusercontent.com/u/156163982?v=4) | ![김패캠](https://avatars.githubusercontent.com/u/156163982?v=4) | ![오패캠](https://avatars.githubusercontent.com/u/156163982?v=4) |
+| ![김주형](https://avatars.githubusercontent.com/u/156163982?v=4) | ![진정](https://avatars.githubusercontent.com/u/156163982?v=4) | ![최지희](https://avatars.githubusercontent.com/u/156163982?v=4) | ![이진식](https://avatars.githubusercontent.com/u/156163982?v=4) | ![소재목](https://avatars.githubusercontent.com/u/156163982?v=4) |
 | :--------------------------------------------------------------: | :--------------------------------------------------------------: | :--------------------------------------------------------------: | :--------------------------------------------------------------: | :--------------------------------------------------------------: |
-|            [박패캠](https://github.com/UpstageAILab)             |            [이패캠](https://github.com/UpstageAILab)             |            [최패캠](https://github.com/UpstageAILab)             |            [김패캠](https://github.com/UpstageAILab)             |            [오패캠](https://github.com/UpstageAILab)             |
+|            [김주형](https://github.com/UpstageAILab)             |            [진정](https://github.com/UpstageAILab)             |            [최지희](https://github.com/UpstageAILab)             |            [이진식](https://github.com/UpstageAILab)             |            [소재목](https://github.com/UpstageAILab)             |
 |                            팀장, 담당 역할                             |                            담당 역할                             |                            담당 역할                             |                            담당 역할                             |                            담당 역할                             |
 
 <br>
 
 ## 🔨 개발 환경 및 기술 스택
-- 주 언어 : _ex) python_
-- 버전 및 이슈관리 : _ex) github_
-- 협업 툴 : _ex) github, notion_
+- 주 언어 : python
+- 버전 및 이슈관리 : github
+- 협업 툴 : github, notion
 
 <br>
 
