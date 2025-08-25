@@ -41,5 +41,9 @@ qa_chain = QAChain(retriever, llm_manager.get_llm())
 # %%
 # 6. 질문 실행
 print(qa_chain.run("이 기업의 시가총액은 얼마야?"))
-print(qa_chain.run("이 기업의 리포트 요약해줘."))
+
+# %%
+print(qa_chain.run("원익 기업의 리포트 요약해줘."))
+# %%
+print(qa_chain.run("삼성전자 기업의 리포트 요약해줘"))
 # %%

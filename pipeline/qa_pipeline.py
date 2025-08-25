@@ -6,7 +6,7 @@ from langchain_community.document_loaders import PyMuPDFLoader
 from langchain_community.vectorstores import FAISS
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.runnables import RunnablePassthrough
+from langchain_core.runnables import RunnablePassthrough, RunnableLambda
 
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_upstage import UpstageEmbeddings
@@ -81,18 +81,34 @@ class DocumentProcessor:
         self.chunk_overlap = chunk_overlap
 
     def load_and_split(self):
-        """PDF 로드 후 청크 분할"""
+        """PDF 로드 후 청크 분할 + source/page 메타데이터 정규화"""
         loader = PyMuPDFLoader(str(self.file_path))  # Path 객체를 문자열로 변환
         docs = loader.load()
+
+        # 파일명/페이지 메타데이터 추가 및 1-based 보정
+        for doc in docs:
+            # 파일명 메타데이터
+            doc.metadata["source"] = self.file_path.name
+
+            # page 키 정규화 (0-based 가능성 처리)
+            page0 = doc.metadata.get("page", doc.metadata.get("page_number"))
+            if page0 is not None:
+                try:
+                    doc.metadata["page"] = int(page0) + 1  # 1-based로 보정
+                except Exception:
+                    # 숫자로 캐스팅 실패 시 원본 유지하되 최소 1로 폴백
+                    doc.metadata["page"] = 1
+            else:
+                # 페이지 정보가 없다면 1로 기본값
+                doc.metadata["page"] = 1
+
         splitter = RecursiveCharacterTextSplitter(
             chunk_size=self.chunk_size,
             chunk_overlap=self.chunk_overlap
         )
-        # 파일명 메타데이터 추가
-        for doc in docs:
-            doc.metadata["source"] = self.file_path.name
-        return splitter.split_documents(docs)
-
+        # 청크 분할 시 메타데이터는 자동 복제됨
+        chunks = splitter.split_documents(docs)
+        return chunks
 
 
 class VectorStoreManager:
@@ -192,23 +208,29 @@ class QAChain:
     def __init__(self, retriever, llm):
         self.retriever = retriever
         self.llm = llm
+        # 예시의 {source}, {page}는 프롬프트 변수로 해석되지 않도록 이스케이프
         self.prompt = PromptTemplate.from_template(
-            """You are an assistant for question-answering tasks.
-Use the following pieces of retrieved context to answer the question.
-If you don't know the answer, just say that you don't know.
-Answer in Korean.
-
-#Question:
-{question}
-#Context:
+            """You are a financial analyst assistant. Use the retrieved context to answer accurately in Korean.
+If unsure, say '모르겠습니다.' Include source citations like '출처: {{source}}, 페이지 {{page}}'.
+Question: {question}
+Context:
 {context}
-
-#Answer:"""
+Answer step-by-step: 1. 요약, 2. 세부 설명, 3. 결론."""
         )
 
+    @staticmethod
+    def _format_docs_with_citations(docs):
+        parts = []
+        for i, d in enumerate(docs, start=1):
+            src = d.metadata.get("source", "unknown")
+            pg = d.metadata.get("page", "?")
+            parts.append(f"[{i}] {d.page_content}\n(출처: {src}, 페이지 {pg})")
+        return "\n\n".join(parts)
+
     def run(self, question):
+        context_chain = self.retriever | RunnableLambda(self._format_docs_with_citations)
         chain = (
-            {"context": self.retriever, "question": RunnablePassthrough()}
+            {"context": context_chain, "question": RunnablePassthrough()}
             | self.prompt
             | self.llm
             | StrOutputParser()
