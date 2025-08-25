@@ -391,3 +391,11 @@ $RECYCLE.BIN/
 *.lnk
 
 # End of https://www.toptal.com/developers/gitignore/api/python,jupyternotebooks,visualstudiocode,pycharm,windows,macos,linux
+
+# Jinsik Lee
+.venv/
+llm/
+pdfs/
+faiss_index/
+.gitignore
+ss.csv
