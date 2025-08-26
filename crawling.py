@@ -6,6 +6,17 @@ from datetime import datetime
 from pypdf import PdfReader, PdfWriter
 
 
+def pdf_utf16_text(s: str) -> str:
+    # UTF-16BE + BOM 경로로 직렬화되도록 BOM 유니코드 문자 선행
+    # pypdf는 PDFDocEncoding 실패 시 UTF-16BE+BOM로 기록한다[웹:433].
+    return "\ufeff" + (s or "")
+
+
+def format_pdf_date(dt: datetime) -> str:
+    # 정확한 PDF 날짜 포맷: D:YYYYMMDDHHmmSS (분은 %M, 초는 %S)[웹:439].
+    return dt.strftime("D:%Y%m%d%H%M%S")
+
+
 def write_pdf_metadata_pypdf(src_path, dst_path, title, author, subject, keywords, created_dt, custom=None):
     # src_path에서 읽고 메타데이터 추가 후 dst_path로 저장
     reader = PdfReader(src_path)
@@ -17,20 +28,22 @@ def write_pdf_metadata_pypdf(src_path, dst_path, title, author, subject, keyword
     if reader.metadata is not None:
         writer.add_metadata(reader.metadata)
 
-    # PDF 날짜 형식 D:YYYYMMDDHHmmSS±HH'mm'
-    # 간단히 로컬시간 기준으로 기록 (타임존 생략 가능)
-    time_str = created_dt.strftime("D:%Y%m%d%H%m%S")
+    time_str = format_pdf_date(created_dt)
 
     meta = {
-        "/Title": title or "",
-        "/Subject": subject or "",
-        "/Author": author or "",
-        "/Keywords": keywords or "",
-        "/Creator": "crawler-script",
-        "/Producer": "crawler-script",
+        "/Title":     pdf_utf16_text(title),
+        "/Author":    pdf_utf16_text(author),
+        "/Subject":   pdf_utf16_text(subject),
+        "/Keywords":  pdf_utf16_text(keywords),
+        "/Creator":   "crawler-script",
+        "/Producer":  "crawler-script",
         "/CreationDate": time_str,
-        "/ModDate": time_str,
+        "/ModDate":      time_str,
     }
+    # 커스텀 키(뷰어에 안 보일 수 있음)
+    if custom:
+        for k, v in custom.items():
+            meta[f"/{k}"] = pdf_utf16_text(str(v))
 
     writer.add_metadata(meta)
 
@@ -42,10 +55,10 @@ def get_tds_from_table_row(tr):
     # tr 내부의 td들 추출
     tds = tr.find_all("td")
 
-    ticker = tds[0].get_text(strip=True) if tds[0] else ""
+    ticker = tds[0].get_text(strip=True) if len(tds) >= 1 else ""
     title = tds[1].get_text(strip=True) if len(tds) >= 1 else ""
     date = tds[-2].get_text(strip=True) if len(tds) >= 2 else ""
-    company = tds[-4].get_text(strip=True) if len(tds) >= 1 else ""
+    company = tds[-4].get_text(strip=True) if len(tds) >= 4 else ""
     date_dt = datetime.strptime(date, "%y.%m.%d")
 
     return ticker, title, company, date_dt
@@ -117,4 +130,3 @@ if __name__ == "__main__":
     for i in range(50):
         crawling(i+1)
         time.sleep(5)  # 5초 대기 (원하는 초 단위로 변경 가능)
-        break
