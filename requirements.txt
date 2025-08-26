@@ -7,3 +7,5 @@ pymupdf
 langchain-teddynote
 langchain_upstage
 faiss-cpu
+streamlit
+pytesseract
