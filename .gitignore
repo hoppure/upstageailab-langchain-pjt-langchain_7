@@ -399,6 +399,7 @@ pdfs/
 faiss_index/
 .gitignore
 ss.csv
+notebooks_for_test/
 
 
 
