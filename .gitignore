@@ -399,3 +399,9 @@ pdfs/
 faiss_index/
 .gitignore
 ss.csv
+
+
+
+data/
+*_vectorstore/
+*.html

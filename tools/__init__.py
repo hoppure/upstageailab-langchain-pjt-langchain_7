@@ -1,0 +1,1 @@
+from .company_compare import compare_companies
