@@ -1,5 +1,5 @@
 import os
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Tuple
 import uuid
 import sys
 
@@ -16,10 +16,37 @@ EMBED_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 DEFAULT_NS = "reports"  # 컬렉션/네임스페이스 흉내
 
 
-def load_from_pdf(file_path: str) -> List[Document]:
-    loader = PyMuPDFLoader(file_path)
-    docs = loader.load()
-    return docs
+
+def load_from_pdf(file_path: str, mode: str = "page") -> Tuple[List[Document], Dict]:
+    """
+    PDF를 로드해 페이지별 Document 리스트와 '파일 단위' 메타데이터를 함께 반환.
+    file_meta는 첫 페이지 metadata를 기준으로 공통 필드를 추려 구성.
+    """
+    loader = PyMuPDFLoader(file_path, mode=mode)
+    docs: List[Document] = loader.load()
+
+    if not docs:
+        return [], {}
+
+    # 첫 문서의 메타데이터를 파일 공통 메타로 사용(필드명은 PDF에 따라 대소문자 변형 존재)
+    m = docs.metadata.copy()
+    # 표준화 키 매핑(있을 때만)
+    file_meta = {
+        "source": m.get("source") or m.get("file_path"),
+        "file_path": m.get("file_path") or m.get("source"),
+        "total_pages": m.get("total_pages"),
+        "format": m.get("format"),
+        "title": m.get("title", ""),
+        "author": m.get("author", ""),
+        "subject": m.get("subject", ""),
+        "keywords": m.get("keywords", ""),
+        "creator": m.get("creator", ""),
+        "producer": m.get("producer", ""),
+        "creationdate": m.get("creationdate") or m.get("creationDate"),
+        "moddate": m.get("moddate") or m.get("modDate"),
+        "trapped": m.get("trapped", ""),
+    }
+    return docs, file_meta
 
 
 def split_docs(doc: List[Document], chunk_size: int = 300, chunk_overlap: int = 50) -> List[Document]:
@@ -95,10 +122,7 @@ def ingest_pdfs_to_faiss(
     all_splits: List[Document] = []
     for i, pdf_file in enumerate(pdf_files, 1):
         try:
-            docs = load_from_pdf(pdf_file)
-            # 네임스페이스 지정
-            for d in docs:
-                d.metadata["ns"] = ns
+            docs, metadata = load_from_pdf(pdf_file)
             splits = split_docs(docs, chunk_size=chunk_size, chunk_overlap=chunk_overlap)
             all_splits.extend(splits)
             print(f"[{i}/{len(pdf_files)}] {os.path.basename(pdf_file)} -> 분할 {len(splits)} 청크")
