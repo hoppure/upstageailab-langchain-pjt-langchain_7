@@ -1,10 +1,17 @@
-import streamlit as st
+import time
+from datetime import datetime
 from pathlib import Path
-from pipeline.config import load_api_keys
-from pipeline.qa_pipeline import LLMManager, VectorStoreManager, process_pdfs_in_folder, QAChain, QAMemoryChain
+
+import streamlit as st
+from config import load_environment, configure_langsmith
+from core import LLMManager, VectorStoreManager, QAMemoryChain
 
 
 def initialize_qa_chain():
+    # api key 로드
+    load_environment()
+    configure_langsmith()
+
     # 기존 설정 가져오기
     llm_provider = "upstage"
     embedding_provider = "upstage"
@@ -27,37 +34,66 @@ def initialize_qa_chain():
     return QAMemoryChain(retriever, llm_manager.get_llm(), vector_manager)
 
 
+def create_new_chat():
+    """새로운 채팅 세션을 생성합니다."""
+    chat_id = int(time.time())
+    st.session_state.current_chat_id = chat_id
+    st.session_state.chats[chat_id] = {
+        "title": "새로운 대화",
+        "messages": [],
+        "created_at": datetime.now().strftime("%Y-%m-%d %H:%M")
+    }
+    return chat_id
+
 def main():
     st.title("기업 리포트 QA 시스템")
     
-    # 세션 스테이트에 QA 체인 저장
+    # 세션 상태 초기화
     if 'qa_chain' not in st.session_state:
         st.session_state.qa_chain = initialize_qa_chain()
-        st.session_state.messages = []  # 메시지 히스토리 초기화
+    if 'chats' not in st.session_state:
+        st.session_state.chats = {}
+    if 'current_chat_id' not in st.session_state:
+        create_new_chat()
 
-    # 사이드바에 대화 초기화 버튼 추가
-    if st.sidebar.button("대화 내용 초기화"):
-        st.session_state.messages = []
-        st.session_state.qa_chain.clear_memory()
-        st.rerun()
+    # 사이드바 구성
+    with st.sidebar:
+        st.button("새 대화", on_click=create_new_chat)
+        
+        st.markdown("### 대화 기록")
+        for chat_id, chat in sorted(st.session_state.chats.items(), reverse=True):
+            # 첫 메시지나 제목으로 대화 제목 설정
+            if len(chat["messages"]) > 0:
+                first_msg = chat["messages"][0]["content"]
+                title = first_msg[:30] + "..." if len(first_msg) > 30 else first_msg
+                chat["title"] = title
+            
+            # 대화 선택 버튼
+            if st.button(
+                f"{chat['title']}\n{chat['created_at']}",
+                key=f"chat_{chat_id}",
+                use_container_width=True,
+            ):
+                st.session_state.current_chat_id = chat_id
+                st.rerun()
 
-    # 사이드바에 설명 추가
-    st.sidebar.markdown("""
-    ### 사용 방법
-    1. 질문을 입력하세요
-    2. Enter를 누르거나 'Ask' 버튼을 클릭하세요
-    3. AI가 답변을 생성합니다
-    """)
+        if st.button("모든 대화 삭제", type="secondary"):
+            st.session_state.chats = {}
+            create_new_chat()
+            st.rerun()
 
+    # 현재 채팅 표시
+    current_chat = st.session_state.chats[st.session_state.current_chat_id]
+    
     # 저장된 채팅 히스토리 표시
-    for message in st.session_state.messages:
+    for message in current_chat["messages"]:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
     # 사용자 입력
     if prompt := st.chat_input("질문을 입력하세요"):
         # 사용자 메시지 추가
-        st.session_state.messages.append({"role": "user", "content": prompt})
+        current_chat["messages"].append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
 
@@ -68,7 +104,7 @@ def main():
                     response = st.session_state.qa_chain.run(prompt)
                     answer = response['answer']
                     
-                    # 응답 메시지를 세션에 저장
+                    # 응답 메시지를 구성
                     message_content = answer
                     if 'source_documents' in response:
                         sources = "\n\n**참고 문서:**"
@@ -83,8 +119,8 @@ def main():
                             st.markdown(f"**출처:** {doc.metadata.get('source', '알 수 없음')}")
                             st.markdown(f"**내용:** {doc.page_content[:200]}...")
                     
-                    # AI 응답을 세션 상태에 저장
-                    st.session_state.messages.append({
+                    # AI 응답을 현재 채팅에 저장
+                    current_chat["messages"].append({
                         "role": "assistant",
                         "content": message_content
                     })
@@ -92,7 +128,7 @@ def main():
                 except Exception as e:
                     error_message = f"오류가 발생했습니다: {str(e)}"
                     st.error(error_message)
-                    st.session_state.messages.append({
+                    current_chat["messages"].append({
                         "role": "assistant",
                         "content": error_message
                     })

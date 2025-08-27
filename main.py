@@ -1,11 +1,16 @@
 # %%
 from pathlib import Path
 
-from pipeline.qa_pipeline import LLMManager, VectorStoreManager, process_pdfs_in_folder, QAChain
+from config import load_environment, configure_langsmith
+from core import LLMManager, VectorStoreManager, QAChain
+from utils import process_pdfs_in_folder
 
 
 # %%
 # 1. 각종 변수 세팅
+load_environment()
+configure_langsmith()
+
 # TODO: 나중에는 yaml로 옮기든 파라미터 넣어주는 식으로 바꾸든지 해야함.
 llm_provider = "upstage"  # openai / claude / upstage / ollama
 embedding_provider = "upstage" # openai / huggingface / upstage
@@ -36,13 +41,14 @@ retriever = vector_manager.load_store()
 
 
 # 5. QA 체인 생성
-qa_chain = QAChain(retriever, llm_manager.get_llm())
+qa_chain = QAChain(retriever, llm_manager.get_llm(), vector_manager)
 
 # %%
 # 6. 질문 실행
-print(qa_chain.run("이 기업의 시가총액은 얼마야?"))
-# %%
 print(qa_chain.run("어떤 기업을 분석해줄 수 있어?"))
+
+# %%
+print(qa_chain.run("이 기업의 시가총액은 얼마야?"))
 
 # %%
 print(qa_chain.run("원익 기업의 리포트 요약해줘."))
